@@ -56,7 +56,7 @@ class Rider extends User implements HasMedia
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'phone' => 'integer',
+            'phone' => 'string',
             'status' => 'integer',
             'created_by_id' => 'integer',
             'reviews_count' => 'integer',

@@ -4,6 +4,11 @@ use App\Enums\RoleEnum;
 use Modules\Taxido\Enums\RoleEnum as ModuleRole;
 $settings = getSettings();
 $roleCredentials = getRoleCredentials();
+$lightLogo = data_get($settings, 'general.light_logo_image');
+$lightLogoPath = $lightLogo?->getPath();
+$loginLogoUrl = $lightLogo && $lightLogoPath && is_file($lightLogoPath)
+    ? $lightLogo->original_url
+    : asset('images/light.svg');
 @endphp
 
 @extends('auth.master')
@@ -21,11 +26,7 @@ $roleCredentials = getRoleCredentials();
             <div class="auth-card">
 
                 <div class="text-center">
-                    @if (isset(getSettings()['general']['light_logo_image']))
-                    <img class="login-img" src="{{ getSettings()['general']['light_logo_image']?->original_url }}" alt="logo" loading="lazy">
-                    @else
-                    <h2>{{ config('app.name') }}</h2>
-                    @endif
+                    <img class="login-img" src="{{ $loginLogoUrl }}" alt="{{ config('app.name') }} logo" loading="eager">
                 </div>
 
                 <div class="welcome">

@@ -71,10 +71,14 @@
 
                     <div class="col-lg-5 position-relative d-none d-lg-block">
                         <div class="footer-image">
-                            @if(file_exists_public(@$content['footer']['right_image']))
+                            @php
+                                $footerImage = $content['footer']['right_image'] ?? null;
+                                $footerImage = $footerImage && file_exists_public($footerImage)
+                                    ? $footerImage
+                                    : 'front/images/footer-img.webp';
+                            @endphp
                             <img class="img-fluid wow fadeInUp" alt="footer-phone"
-                                src="{{ asset(@$content['footer']['right_image']) }}" data-wow-delay="0.98s">
-                            @endif
+                                src="{{ asset($footerImage) }}" data-wow-delay="0.98s">
                         </div>
                     </div>
                 </div>

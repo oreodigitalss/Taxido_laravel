@@ -1,3 +1,10 @@
+@php
+    $faviconMedia = data_get(getSettings(), 'general.favicon_image');
+    $faviconPath = $faviconMedia?->getPath();
+    $faviconUrl = $faviconMedia && $faviconPath && is_file($faviconPath)
+        ? $faviconMedia->original_url . '?v=' . filemtime($faviconPath)
+        : asset('images/favicon.svg');
+@endphp
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +15,8 @@
 <meta property="og:description" content="{{ $content['seo']['og_description'] ?? '' }}">
 <meta name="author" content="Taxido">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<link rel="icon" href="{{ getSettings()['general']['favicon_image']?->original_url ?? asset('images/favicon.svg') }}" type="image/x-icon">
-<link rel="shortcut icon" type="image/x-icon" href="{{ getSettings()['general']['favicon_image']?->original_url ?? asset('images/favicon.svg') }}">
+<link rel="icon" href="{{ $faviconUrl }}" type="image/x-icon">
+<link rel="shortcut icon" type="image/x-icon" href="{{ $faviconUrl }}">
 <title>{{ config('app.title') }} - @yield('title')</title>
 <link rel="apple-touch-icon" href="{{ asset('front/images/logo/favicon.png') }}">
 <meta name="theme-color" content="#7C57FF">

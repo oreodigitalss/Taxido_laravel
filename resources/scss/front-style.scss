@@ -2913,6 +2913,8 @@ position: relative;
   align-items: center;
   justify-content: center;
   background-color: #fff;
+  // Keep the page accessible even when the JavaScript load handler fails.
+  animation: dismiss-stuck-loader 1ms linear 2s forwards;
 
   img {
     width: 200px;
@@ -2961,6 +2963,14 @@ position: relative;
         -5px 45px 8px 2px, -14px 49px 8px 2px, 6px 60px 11px 1px,
         -11px 66px 11px 1px, 11px 75px 13px, -1px 82px 15px;
     }
+  }
+}
+
+@keyframes dismiss-stuck-loader {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 }
 

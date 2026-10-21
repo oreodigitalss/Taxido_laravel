@@ -14,6 +14,12 @@
 @section('content')
     @php
         $classes = ['ride-box', 'user-box', 'driver-box', 'rating-box', 'ride-box'];
+        $statisticIcons = ['front/images/platform/ride.svg', 'front/images/platform/user.svg', 'front/images/platform/driver.svg', 'front/images/platform/rating.svg'];
+        $featureImages = ['front/images/gif/map.gif', 'front/images/gif/booking-request.gif', 'front/images/gif/package.gif', 'front/images/gif/language.gif', 'front/images/gif/payment.gif', 'front/images/gif/rent-vehicles.gif'];
+        $rightPhoneImage = $content['home']['right_phone_image'] ?? null;
+        $rightPhoneImage = $rightPhoneImage && file_exists_public($rightPhoneImage) ? $rightPhoneImage : 'front/images/phone-1.png';
+        $leftPhoneImage = $content['home']['left_phone_image'] ?? null;
+        $leftPhoneImage = $leftPhoneImage && file_exists_public($leftPhoneImage) ? $leftPhoneImage : 'front/images/phone-2.png';
         $blogs = getBlogsByIds(@$content['blog']['blogs'] ?? []);
         $faqs = getFaqsByIds(@$content['faq']['faqs'] ?? []);
         $half = ceil(count($faqs) / 2);
@@ -41,16 +47,12 @@
                     </div>
                 </div>
                 <div class="phone-image">
-                    @if (file_exists_public(@$content['home']['right_phone_image']))
-                        <div class="phone-1 wow fadeInUp" data-wow-delay="1.05s">
-                            <img class="img-fluid mobile-phone" alt="home-phone" src="{{ asset(@$content['home']['right_phone_image']) }}" loading="lazy">
-                        </div>
-                    @endif
-                    @if (file_exists_public(@$content['home']['left_phone_image']))
-                        <div class="phone-2 wow fadeInUp" data-wow-delay="1.2s">
-                            <img class="img-fluid mobile-phone" alt="home-phone" src="{{ asset(@$content['home']['left_phone_image']) }}" loading="lazy">
-                        </div>
-                    @endif
+                    <div class="phone-1 wow fadeInUp" data-wow-delay="1.05s">
+                        <img class="img-fluid mobile-phone" alt="home-phone" src="{{ asset($rightPhoneImage) }}" loading="lazy">
+                    </div>
+                    <div class="phone-2 wow fadeInUp" data-wow-delay="1.2s">
+                        <img class="img-fluid mobile-phone" alt="home-phone" src="{{ asset($leftPhoneImage) }}" loading="lazy">
+                    </div>
                 </div>
             </div>
         </section>
@@ -72,9 +74,13 @@
                         <div class="col-xl-3 col-sm-6 wow fadeIn" data-wow-delay="0.4s">
                             <div class="experience-box {{ $classes[$index % count($classes)] }}">
                                 <div class="experience-img">
-                                    @if (file_exists_public(@$counter['icon']))
-                                        <img src="{{ asset(@$counter['icon']) }}" class="img-fluid" loading="lazy"/>
-                                    @endif
+                                    @php
+                                        $counterIcon = $counter['icon'] ?? null;
+                                        $counterIcon = $counterIcon && file_exists_public($counterIcon)
+                                            ? $counterIcon
+                                            : $statisticIcons[$index % count($statisticIcons)];
+                                    @endphp
+                                    <img src="{{ asset($counterIcon) }}" class="img-fluid" loading="lazy" alt="" />
                                 </div>
                                 <div class="experience-content">
                                     <h4>{{ @$counter['text'] }}</h4>
@@ -105,9 +111,13 @@
                     @forelse ($content['feature']['images'] ?? [] as $index => $image)
                         <div class="col-xl-4 col-md-6 wow fadeInUp" data-wow-delay="{{ 0.55 + $index * 0.05 }}s">
                             <div class="best-choice-box">
-                                @if (file_exists_public(@$image['image']))
-                                    <img class="img-fluid" alt="map-gif" src="{{ @asset($image['image']) }}" loading="lazy">
-                                @endif
+                                @php
+                                    $featureImage = $image['image'] ?? null;
+                                    $featureImage = $featureImage && file_exists_public($featureImage)
+                                        ? $featureImage
+                                        : $featureImages[$index % count($featureImages)];
+                                @endphp
+                                <img class="img-fluid" alt="{{ $image['title'] ?? 'Feature' }}" src="{{ asset($featureImage) }}" loading="lazy">
                                 <div class="best-choice-content">
                                     <h4>{{ @$image['title'] }}</h4>
                                     <p>{{ @$image['description'] }}</p>
@@ -140,9 +150,13 @@
                                 <div class="swiper-wrapper">
                                     @forelse ($content['ride']['step'] as $step)
                                         <div class="swiper-slide">
-                                            @if (file_exists_public($step['image']))
-                                                <img class="img-fluid" alt="screen-img" src="{{ asset($step['image']) }}" loading="lazy">
-                                            @endif
+                                            @php
+                                                $stepImage = $step['image'] ?? null;
+                                                $stepImage = $stepImage && file_exists_public($stepImage)
+                                                    ? $stepImage
+                                                    : 'front/images/screen/' . (($loop->index % 5) + 1) . '.jpg';
+                                            @endphp
+                                            <img class="img-fluid" alt="screen-img" src="{{ asset($stepImage) }}" loading="lazy">
                                         </div>
                                     @empty
                                     @endforelse
@@ -261,12 +275,18 @@
                     <div class="swiper-wrapper">
 
                         @forelse ($blogs as $index => $blog)
+                            @php
+                                $blogThumbnail = $blog['blog_thumbnail']['original_url'] ?? null;
+                                $blogThumbnail = $blogThumbnail && file_exists_public($blogThumbnail)
+                                    ? $blogThumbnail
+                                    : 'front/images/blog/' . (($index % 3) + 1) . '.jpg';
+                            @endphp
                             <div class="swiper-slide wow fadeInUp" data-wow-delay="0.35s">
                                 <div class="blog-box">
                                     <div class="blog-image">
 
                                         <a href="{{ route('blog.slug', @$blog['slug']) }}"><img class="img-fluid"
-                                                src="{{ asset($blog['blog_thumbnail']['original_url'] ?? '') }}"
+                                                src="{{ asset($blogThumbnail) }}"
                                                 alt="{{@$blog['slug']}}" loading="lazy"></a>
                                     </div>
                                     <div class="blog-content">
@@ -312,11 +332,17 @@
                 <div class="swiper comment-slider pagination-box">
                     <div class="swiper-wrapper wow fadeInUp" data-wow-delay="0.5s">
                         @forelse ($testimonials as $index => $testimonial)
+                            @php
+                                $testimonialImage = $testimonial?->profile_image?->asset_url;
+                                $testimonialImage = $testimonialImage && file_exists_public($testimonialImage)
+                                    ? $testimonialImage
+                                    : 'front/images/placeholder/50x50.png';
+                            @endphp
                             <div class="swiper-slide">
                                 <div class="comment-box">
                                     <div class="top-comment">
                                         <img class="img-fluid" alt="{{ $testimonial?->title }}"
-                                            src="{{ asset($testimonial?->profile_image?->asset_url ?? '') }}" loading="lazy">
+                                            src="{{ asset($testimonialImage) }}" loading="lazy">
 
                                         <h5>{{ $testimonial?->title }}</h5>
                                     </div>
@@ -355,13 +381,13 @@
     $(document).ready(function() {
         new WOW().init();
 
-        $(window).on('load', function() {
-            setTimeout(function() {
-                $('#fullScreenLoader').fadeOut('slow', function() {
-                    $(this).remove();
-                });
-            }, 3500);
-        });
+        // Do not wait for every image/font request before removing the overlay.
+        // A failed or slow asset must not leave the whole page covered forever.
+        setTimeout(function() {
+            $('#fullScreenLoader').fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 300);
     });
 </script>
 @endpush

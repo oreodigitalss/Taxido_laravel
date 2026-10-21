@@ -25,6 +25,7 @@ return [
         'openssl',
         'pdo',
         'mbstring',
+        'mysqli',
         'tokenizer',
         'json',
         'curl',
