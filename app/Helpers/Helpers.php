@@ -524,6 +524,18 @@ if (! function_exists('formatCurrency')) {
     function formatCurrency($amount, $currencyCode = null)
     {
         $currencyCode = $currencyCode ?? session('currency', getDefaultCurrencyCode());
+
+        // Laravel's locale-aware formatter requires PHP's intl extension.
+        // Keep admin dashboards usable on local PHP installs without intl.
+        if (! extension_loaded('intl')) {
+            $currencySymbol = Currency::where('code', $currencyCode)
+                ->whereNull('deleted_at')
+                ->value('symbol');
+
+            return ($currencySymbol ?: $currencyCode.' ')
+                .number_format((float) $amount, 2, '.', ',');
+        }
+
         return Number::currency((float) $amount, in: $currencyCode);
     }
 }

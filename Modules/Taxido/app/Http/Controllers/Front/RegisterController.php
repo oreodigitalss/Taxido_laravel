@@ -10,6 +10,7 @@ use Modules\Taxido\Enums\RoleEnum;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Modules\Taxido\Services\FirebasePhoneVerifier;
 
 class RegisterController extends Controller
 {
@@ -23,7 +24,20 @@ class RegisterController extends Controller
                 'country_code' => 'required|string',
                 'password' => 'required|string|min:8|confirmed',
                 'name' => 'required|string|max:255',
+                'firebase_id_token' => 'required|string',
             ]);
+
+            // The browser check improves the form flow; this server check is the trust boundary.
+            $firebaseIdentity = app(FirebasePhoneVerifier::class)->identity($validated['firebase_id_token']);
+            $submittedPhone = '+' . preg_replace('/\D+/', '', $validated['country_code'])
+                . preg_replace('/\D+/', '', $validated['phone']);
+            if (!$firebaseIdentity || $firebaseIdentity['phone_number'] !== $submittedPhone) {
+                throw new Exception('Please verify the phone number before registering.');
+            }
+
+            if (\App\Models\User::where('firebase_uid', $firebaseIdentity['uid'])->exists()) {
+                throw new Exception('This Firebase account is already linked to another user.');
+            }
 
             $rider = Rider::create([
                 'name' => $validated['name'],
@@ -36,11 +50,12 @@ class RegisterController extends Controller
             ]);
 
             $rider->assignRole(RoleEnum::RIDER);
+            $rider->forceFill(['firebase_uid' => $firebaseIdentity['uid']])->save();
             DB::commit();
 
             Auth::login($rider);
             $request->session()->regenerate();
-            return redirect()->route('front.cab.dashboard.index');
+            return redirect()->route('front.cab.dashboard.index')->with('success', 'Registration successful!');
         } catch (Exception $e) {
             DB::rollback();
             return back()->withErrors(['error' => 'Registration failed: ' . $e->getMessage()])->withInput();

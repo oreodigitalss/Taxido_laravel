@@ -25,10 +25,13 @@
                         <i class="ri-menu-line"></i>
                     </button>
                     <a href="{{ route('home') }}" class="logo-box">
-                        @if (file_exists_public(@$content['header']['logo']))
-                            <img class="img-fluid" alt="Logo" src="{{ asset(@$content['header']['logo']) }}"
-                                loading="lazy">
-                        @endif
+                        @php
+                            $headerLogo = $content['header']['logo'] ?? null;
+                            $headerLogo = $headerLogo && file_exists_public($headerLogo)
+                                ? $headerLogo
+                                : 'front/images/logo.svg';
+                        @endphp
+                        <img class="img-fluid" alt="Logo" src="{{ asset($headerLogo) }}" loading="lazy">
                     </a>
                 </div>
                 <div class="header-middle">

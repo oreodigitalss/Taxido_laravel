@@ -8,7 +8,15 @@ use Illuminate\Support\Facades\Storage;
 // Serve public-disk uploads when public/storage is a regular directory instead
 // of Laravel's usual storage symlink (common in local Windows environments).
 Route::get('storage/{path}', function (string $path) {
-    abort_unless(Storage::disk('public')->exists($path), 404);
+    if (! Storage::disk('public')->exists($path)) {
+        // Local database dumps may reference uploads that were not included in
+        // storage/app/public. Keep those image URLs renderable with the bundled
+        // missing-file artwork instead of returning a broken-image response.
+        $fallback = public_path('images/file-not-found.webp');
+        abort_unless(is_file($fallback), 404);
+
+        return response()->file($fallback);
+    }
 
     return Storage::disk('public')->response($path);
 })->where('path', '.*');

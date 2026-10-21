@@ -150,13 +150,13 @@
             $(document).ready(function () {
 
                 const firebaseConfig = {
-                    apiKey: "AIzaSyAWUoFrJ_G3YSh0kDWMm685RaE61UPKOWM",
-                    authDomain: "rydap-com.firebaseapp.com",
-                    projectId: "rydap-com",
-                    storageBucket: "rydap-com.firebasestorage.app",
-                    messagingSenderId: "185030684517",
-                    appId: "1:185030684517:web:01ab918a968bccb8ef3b8c",
-                    measurementId: "G-BHHEG7NTHV"
+                    apiKey: @json(config('services.firebase.api_key')),
+                    authDomain: @json(config('services.firebase.auth_domain')),
+                    projectId: @json(config('services.firebase.project_id')),
+                    storageBucket: @json(config('services.firebase.storage_bucket')),
+                    messagingSenderId: @json(config('services.firebase.messaging_sender_id')),
+                    appId: @json(config('services.firebase.app_id')),
+                    measurementId: @json(config('services.firebase.measurement_id'))
                 };
 
                 if (!firebase.apps.length) {
@@ -221,17 +221,39 @@
                     }
                 }
 
+                function firebaseErrorMessage(error) {
+                    const messages = {
+                        'auth/operation-not-allowed': 'Phone sign-in is not enabled for the Firebase project used by this site.',
+                        'auth/region-not-allowed': 'Firebase is not allowing SMS delivery to the selected country. Check the SMS region policy for the project used by this site.',
+                        'auth/invalid-phone-number': 'Please enter a valid phone number with the selected country code.',
+                        'auth/captcha-check-failed': 'reCAPTCHA verification failed. Please try again.',
+                        'auth/too-many-requests': 'Too many attempts. Please wait before trying again.',
+                        'auth/quota-exceeded': 'SMS sending is temporarily unavailable for this Firebase project.',
+                        'auth/network-request-failed': 'Network error. Check your connection and try again.'
+                    };
+
+                    return messages[error.code] || 'Unable to complete phone verification. Please try again.';
+                }
+
                 function getPhoneNumber() {
                     const countryCode = String(
                         $('#select-country-code').val() || ''
                     ).replace(/\D/g, '');
 
-                    const phone = String(
-                        $('#email_or_phone').val() || ''
-                    ).trim().replace(/\D/g, '');
+                    const rawPhone = String($('#email_or_phone').val() || '').trim();
+                    let phone = rawPhone.replace(/\D/g, '');
 
                     if (!countryCode || !phone) {
                         throw new Error('Please enter your country code and phone number.');
+                    }
+
+                    // If a user pastes an international number, do not prepend the
+                    // selected dial code a second time.
+                    if (rawPhone.startsWith('+')) {
+                        if (!phone.startsWith(countryCode)) {
+                            throw new Error('The phone number country code does not match the selected country.');
+                        }
+                        phone = phone.slice(countryCode.length);
                     }
 
                     const fullPhoneNumber = '+' + countryCode + phone;
@@ -255,6 +277,8 @@
                             callback: function () {},
                             'expired-callback': function () {
                                 showError('reCAPTCHA expired. Please verify again.');
+                                confirmationResult = null;
+                                resetRecaptcha();
                             }
                         }
                     );
@@ -379,9 +403,7 @@
                     } catch (error) {
                         console.error('Firebase send OTP error:', error);
 
-                        showError(
-                            error.message || 'Unable to send OTP. Please try again.'
-                        );
+                        showError(firebaseErrorMessage(error));
 
                         resetRecaptcha();
                     } finally {
@@ -410,6 +432,8 @@
                         const credential = await confirmationResult.confirm(otp);
                         const idToken = await credential.user.getIdToken(true);
 
+                        const selectedCountryCode = String($('#select-country-code').val() || '').replace(/\D/g, '');
+                        const fullPhoneNumber = getPhoneNumber();
                         const response = await $.ajax({
                             url: verifyUrl,
                             method: 'POST',
@@ -420,12 +444,17 @@
                                 'Accept': 'application/json'
                             },
                             data: JSON.stringify({
-                                id_token: idToken
+                                id_token: idToken,
+                                email_or_phone: fullPhoneNumber.slice(selectedCountryCode.length + 1),
+                                country_code: selectedCountryCode
                             })
                         });
 
                         if (response.success && response.redirect) {
-                            window.location.href = response.redirect;
+                            showSuccess(response.message || 'Login successful!');
+                            window.setTimeout(function () {
+                                window.location.href = response.redirect;
+                            }, 1000);
                             return;
                         }
 
@@ -433,11 +462,12 @@
                     } catch (error) {
                         console.error('Firebase OTP verification error:', error);
 
-                        showError(
-                            error.responseJSON?.message ||
-                            error.message ||
-                            'OTP verification failed.'
-                        );
+                        const verificationMessages = {
+                            'auth/invalid-verification-code': 'Incorrect OTP. Please enter the latest code.',
+                            'auth/code-expired': 'This OTP has expired. Please request a new one.',
+                            'auth/session-expired': 'This OTP session has expired. Please request a new one.'
+                        };
+                        showError(error.responseJSON?.message || verificationMessages[error.code] || firebaseErrorMessage(error));
                     } finally {
                         $button.prop('disabled', false).text('Verify OTP');
                     }

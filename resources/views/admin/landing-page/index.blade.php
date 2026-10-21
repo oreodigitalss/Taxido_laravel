@@ -1678,6 +1678,17 @@
                                                                 </span>
                                                         </div>
                                                     </div>
+                                                    <div class="form-group row">
+                                                        <label class="col-md-2" for="tawk_to_widget_id">Tawk.to Widget ID</label>
+                                                        <div class="col-md-10">
+                                                            <input class="form-control" type="text"
+                                                                id="tawk_to_widget_id"
+                                                                name="analytics[tawk_to_widget_id]"
+                                                                value="{{ $content['analytics']['tawk_to_widget_id'] ?? old('analytics.tawk_to_widget_id') }}"
+                                                                placeholder="e.g. 1f5kgf5s">
+                                                            <span class="text-gray mt-1">Use the Widget ID from the same Tawk.to property. Copy it from Administration → Channels → Chat Widget.</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

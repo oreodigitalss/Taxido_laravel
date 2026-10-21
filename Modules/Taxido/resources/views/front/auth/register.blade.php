@@ -21,6 +21,12 @@
 
                             <input type="hidden" name="firebase_id_token" id="firebase_id_token">
 
+                            @if ($errors->has('error'))
+                                <div class="text-danger mb-3" role="alert">
+                                    {{ $errors->first('error') }}
+                                </div>
+                            @endif
+
                             <div class="form-box form-icon">
                                 <div class="position-relative">
                                     <i class="ri-user-line"></i>
@@ -168,13 +174,13 @@
     "use strict";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyAWUoFrJ_G3YSh0kDWMm685RaE61UPKOWM",
-        authDomain: "rydap-com.firebaseapp.com",
-        projectId: "rydap-com",
-        storageBucket: "rydap-com.firebasestorage.app",
-        messagingSenderId: "185030684517",
-        appId: "1:185030684517:web:01ab918a968bccb8ef3b8c",
-        measurementId: "G-BHHEG7NTHV"
+        apiKey: @json(config('services.firebase.api_key')),
+        authDomain: @json(config('services.firebase.auth_domain')),
+        projectId: @json(config('services.firebase.project_id')),
+        storageBucket: @json(config('services.firebase.storage_bucket')),
+        messagingSenderId: @json(config('services.firebase.messaging_sender_id')),
+        appId: @json(config('services.firebase.app_id')),
+        measurementId: @json(config('services.firebase.measurement_id'))
     };
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -200,6 +206,20 @@
     function notifySuccess(message) {
         if (window.toastr) toastr.success(message);
         else alert(message);
+    }
+
+    function firebaseErrorMessage(error) {
+        const messages = {
+            'auth/operation-not-allowed': 'Phone sign-in is not enabled for the Firebase project used by this site.',
+            'auth/region-not-allowed': 'Firebase is not allowing SMS delivery to the selected country. Check the SMS region policy for the project used by this site.',
+            'auth/invalid-phone-number': 'Please enter a valid phone number with the selected country code.',
+            'auth/captcha-check-failed': 'reCAPTCHA verification failed. Please try again.',
+            'auth/too-many-requests': 'Too many attempts. Please wait before trying again.',
+            'auth/quota-exceeded': 'SMS sending is temporarily unavailable for this Firebase project.',
+            'auth/network-request-failed': 'Network error. Check your connection and try again.'
+        };
+
+        return messages[error.code] || 'Unable to complete phone verification. Please try again.';
     }
 
     function getFullPhone() {
@@ -298,12 +318,13 @@
 
         } catch (error) {
             console.error('Firebase send OTP:', error.code, error.message);
-            notifyError(error.message || 'Unable to send OTP.');
+            notifyError(firebaseErrorMessage(error));
 
             if (verifier) {
                 verifier.clear();
                 verifier = null;
             }
+            $('#recaptcha-container').empty();
         } finally {
             busy = false;
             $send.prop('disabled', false).text('Send Phone OTP');
@@ -346,7 +367,12 @@
             $('#phone-verified-message').show();
             $register.prop('disabled', false);
 
-            notifySuccess('Phone number verified successfully.');
+            if ($form.valid()) {
+                notifySuccess('Phone number verified. Creating your account...');
+                $form.trigger('submit');
+            } else {
+                notifySuccess('Phone number verified. Complete the form and click Sign Up to finish registration.');
+            }
 
         } catch (error) {
             console.error('Firebase verify OTP:', error.code, error.message);

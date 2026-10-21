@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Mail;
 use Modules\Taxido\Emails\VerifyEmail;
 use Illuminate\Support\Facades\Validator;
+use Modules\Taxido\Services\FirebasePhoneVerifier;
 
 class AuthController extends Controller
 {
@@ -21,7 +22,9 @@ class AuthController extends Controller
             return redirect()->route('front.cab.dashboard.index');
         }
 
-        return view('taxido::front.auth.login');
+        return response()->view('taxido::front.auth.login')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function register()
@@ -29,7 +32,9 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('front.cab.dashboard.index');
         }
-        return view('taxido::front.auth.register');
+        return response()->view('taxido::front.auth.register')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function loginWithCredential(Request $request)
@@ -128,7 +133,9 @@ class AuthController extends Controller
             $otp = implode('', $request->otp);
             $input = $request->email_or_phone;
             $isEmail = filter_var($input, FILTER_VALIDATE_EMAIL);
-            $phone = $isEmail ? null : '+' . $request->country_code . $input;
+            $countryCode = preg_replace('/\D+/', '', (string) $request->country_code);
+            $nationalPhone = preg_replace('/\D+/', '', (string) $input);
+            $phone = $isEmail ? null : '+' . $countryCode . $nationalPhone;
 
             $verify_otp = DB::table('auth_tokens')
                 ->where('token', $otp)
@@ -146,16 +153,25 @@ class AuthController extends Controller
                 return redirect()->back()->with('error', __('taxido::front.otp_invalid'));
             }
 
-            $rider = Rider::whereNull('deleted_at')
-                ->where($isEmail ? 'email' : 'phone', $isEmail ? $input : $input)
-                ->first();
+            $riderQuery = Rider::whereNull('deleted_at');
+            if ($isEmail) {
+                $riderQuery->where('email', $input);
+            } else {
+                $riderQuery->where('phone', $nationalPhone)->where('country_code', $countryCode);
+            }
+            $rider = $riderQuery->first();
 
             if (!$rider) {
                 return redirect()->route('front.cab.login.index')->with('error', __('taxido::front.user_not_found'));
             }
 
+            if (!$rider->status) {
+                return redirect()->route('front.cab.login.index')->with('error', 'Account is disabled.');
+            }
+
             Auth::login($rider);
-            return redirect()->route('front.cab.dashboard.index');
+            $request->session()->regenerate();
+            return redirect()->route('front.cab.dashboard.index')->with('success', 'Login successful!');
         } catch (Exception $e) {
             return back()->withErrors(['otp' => 'An error occurred. Please try again.']);
         }
@@ -166,28 +182,52 @@ class AuthController extends Controller
         try {
 
             $validator = Validator::make($request->all(), [
-                'firebase_uid' => 'required|string',
-                'email_or_phone' => 'required',
+                'id_token' => 'required|string',
+                'email_or_phone' => 'required|string',
                 'country_code' => 'nullable',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid request'
-                ], 400);
+                    'message' => $validator->errors()->first()
+                ], 422);
             }
 
             $input = $request->email_or_phone;
             $isEmail = filter_var($input, FILTER_VALIDATE_EMAIL);
-            $phone = $isEmail ? null : '+' . $request->country_code . $input;
-            $email = $isEmail ? $input : null;
-            if(!$isEmail) {
-                if(strlen((string)$input) < 6 || strlen((string)$input) > 15) {
-                    return response()->json(['success' => false, 'message' => "Phone number must be 6 to 15 digits."], 422);
-                }
+            if ($isEmail) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This verification endpoint is only for Firebase phone sign-in.'
+                ], 422);
             }
-            $rider = Rider::whereNull('deleted_at')->where($isEmail ? 'email' : 'phone', $isEmail ? $input : $input)?->first();
+
+            $countryCode = preg_replace('/\D+/', '', (string) $request->country_code);
+            $nationalPhone = preg_replace('/\D+/', '', (string) $input);
+            $phone = '+' . $countryCode . $nationalPhone;
+            if (strlen($nationalPhone) < 6 || strlen($nationalPhone) > 15) {
+                return response()->json(['success' => false, 'message' => "Phone number must be 6 to 15 digits."], 422);
+            }
+            if (!$countryCode) {
+                return response()->json(['success' => false, 'message' => 'Country code is required.'], 422);
+            }
+
+            // Verify the Firebase credential server side and bind it to the submitted phone.
+            $firebaseIdentity = app(FirebasePhoneVerifier::class)->identity($request->id_token);
+            if (!$firebaseIdentity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This OTP is expired or belongs to an old Firebase session. Reload this page and request a new OTP.'
+                ], 401);
+            }
+            if ($firebaseIdentity['phone_number'] !== $phone) {
+                return response()->json(['success' => false, 'message' => 'Verified phone number does not match.'], 401);
+            }
+
+            $riderQuery = Rider::whereNull('deleted_at');
+            $riderQuery->where('phone', $nationalPhone)->where('country_code', $countryCode);
+            $rider = $riderQuery->first();
             if (!$rider) {
                 return response()->json([
                     'success' => true,
@@ -201,9 +241,21 @@ class AuthController extends Controller
                         'message' => 'Account is disabled.'
                     ], 403);
                 }
+
+                if ($rider->firebase_uid && $rider->firebase_uid !== $firebaseIdentity['uid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This phone number is linked to a different Firebase account.'
+                    ], 401);
+                }
+
+                if (!$rider->firebase_uid) {
+                    $rider->forceFill(['firebase_uid' => $firebaseIdentity['uid']])->save();
+                }
             }
 
             Auth::login($rider);
+            $request->session()->regenerate();
             return response()->json([
                 'success' => true,
                 'message' => 'Login successful!',
@@ -211,11 +263,12 @@ class AuthController extends Controller
             ]);
 
         } catch (Exception $e) {
+            report($e);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Verification failed: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Unable to verify OTP right now. Please try again shortly.'
+            ], 503);
         }
     }
 }
