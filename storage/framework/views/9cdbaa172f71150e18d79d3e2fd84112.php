@@ -62,7 +62,7 @@ unset($__errorArgs, $__bag); ?>
                                 <div id="otp-error" class="text-danger mt-2" style="display:none;"></div>
                             </div>
 
-                            <?php if(isDemoMode()): ?>
+                            <?php if(isDemoMode() && session('otp_login_method') !== 'email'): ?>
                                 <h6><?php echo e(__('taxido::front.demo_otp')); ?></h6>
                             <?php endif; ?>
 
@@ -101,13 +101,13 @@ unset($__errorArgs, $__bag); ?>
     "use strict";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyAWUoFrJ_G3YSh0kDWMm685RaE61UPKOWM",
-        authDomain: "rydap-com.firebaseapp.com",
-        projectId: "rydap-com",
-        storageBucket: "rydap-com.firebasestorage.app",
-        messagingSenderId: "185030684517",
-        appId: "1:185030684517:web:01ab918a968bccb8ef3b8c",
-        measurementId: "G-BHHEG7NTHV"
+        apiKey: <?php echo json_encode(config('services.firebase.api_key'), 15, 512) ?>,
+        authDomain: <?php echo json_encode(config('services.firebase.auth_domain'), 15, 512) ?>,
+        projectId: <?php echo json_encode(config('services.firebase.project_id'), 15, 512) ?>,
+        storageBucket: <?php echo json_encode(config('services.firebase.storage_bucket'), 15, 512) ?>,
+        messagingSenderId: <?php echo json_encode(config('services.firebase.messaging_sender_id'), 15, 512) ?>,
+        appId: <?php echo json_encode(config('services.firebase.app_id'), 15, 512) ?>,
+        measurementId: <?php echo json_encode(config('services.firebase.measurement_id'), 15, 512) ?>
     };
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
