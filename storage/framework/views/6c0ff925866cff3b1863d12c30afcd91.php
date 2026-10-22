@@ -118,18 +118,16 @@ unset($__errorArgs, $__bag); ?>
 
                             <?php if(isset($cabSettings['activation']['default_credentials'])): ?>
                                 <?php if((int) $cabSettings['activation']['default_credentials']): ?>
-                                    <div class="demo-credential">
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline default-credentials guest-btn"
-                                            data-email="rider@example.com">
-                                            <span>
-                                                <i class="ri-user-3-fill"></i>
-                                            </span>
-                                            <?php echo e(__('taxido::front.demo_user')); ?>
-
-                                        </button>
-                                    </div>
+                                <div class="demo-credential">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline default-credentials guest-btn">
+                                        <span>
+                                            <i class="ri-google-fill"></i>
+                                        </span>
+                                        Login with Google
+                                    </button>
+                                </div>
                                 <?php endif; ?>
                             <?php endif; ?>
 
@@ -499,17 +497,6 @@ unset($__errorArgs, $__bag); ?>
                 });
 
                 // Existing demo account functionality.
-                $('.default-credentials').on('click', function (event) {
-                    event.preventDefault();
-
-                    $('#email_or_phone').val($(this).data('email')).trigger('input');
-
-                    $('.country-code-section').hide();
-                    $('#recaptcha-container').hide();
-                    $('#firebase-otp-section').hide();
-
-                    confirmationResult = null;
-                });
 
                 // Keep the existing Select2 country-code UI.
                 $('#select-country-code').select2({
