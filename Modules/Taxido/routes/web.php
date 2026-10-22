@@ -17,6 +17,7 @@ Route::group(['middleware' => ['localization' , 'maintenance', 'web'], 'namespac
   // Authentication
   Route::get('login', 'AuthController@login')->name('login.index');
   Route::post('login-with-credential', 'AuthController@loginWithCredential')->name('login_with_credential');
+  Route::post('login-with-google', 'AuthController@loginWithGoogle')->name('login_with_google');
   Route::post('verify-firebase-otp', 'AuthController@verifyFirebaseOtp')->name('verify_firebase_otp');
   Route::get('verify-otp', 'AuthController@verifyOtp')->name('verify_otp');
   Route::post('verify-otp', 'AuthController@verifyOtpStore')->name('verify_otp.store');

@@ -55,7 +55,7 @@
                                 <div id="otp-error" class="text-danger mt-2" style="display:none;"></div>
                             </div>
 
-                            @if (isDemoMode())
+                            @if (isDemoMode() && session('otp_login_method') !== 'email')
                                 <h6>{{ __('taxido::front.demo_otp') }}</h6>
                             @endif
 

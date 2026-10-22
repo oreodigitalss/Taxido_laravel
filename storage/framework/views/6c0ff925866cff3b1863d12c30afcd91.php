@@ -178,6 +178,7 @@ unset($__errorArgs, $__bag); ?>
                 const csrfToken = <?php echo json_encode(csrf_token(), 15, 512) ?>;
                 const loginUrl = <?php echo json_encode(route('front.cab.login_with_credential'), 15, 512) ?>;
                 const verifyUrl = <?php echo json_encode(route('front.cab.firebase.verify-otp'), 15, 512) ?>;
+                const googleLoginUrl = <?php echo json_encode(route('front.cab.login_with_google'), 15, 512) ?>;
                 const emailVerifyUrl = <?php echo json_encode(route('front.cab.verify_otp'), 15, 512) ?>;
                 const otpButtonText = <?php echo json_encode(__('taxido::front.get_otp'), 15, 512) ?>;
                 const failedOtpMessage = <?php echo json_encode(__('taxido::front.failed_resent_otp'), 15, 512) ?>;
@@ -230,6 +231,51 @@ unset($__errorArgs, $__bag); ?>
                         $button.text(text);
                     }
                 }
+
+                // Google sign-in uses Firebase popup; Laravel validates the ID
+                // token before establishing the application's session.
+                $('.guest-btn').on('click', async function () {
+                    const $button = $(this);
+                    const originalHtml = $button.html();
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    provider.setCustomParameters({ prompt: 'select_account' });
+
+                    try {
+                        $button.prop('disabled', true).text('Signing in...');
+                        const result = await auth.signInWithPopup(provider);
+                        const idToken = await result.user.getIdToken(true);
+                        const response = await $.ajax({
+                            url: googleLoginUrl,
+                            method: 'POST',
+                            contentType: 'application/json',
+                            dataType: 'json',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            data: JSON.stringify({ id_token: idToken })
+                        });
+
+                        if (response.success && response.redirect) {
+                            window.location.assign(response.redirect);
+                            return;
+                        }
+
+                        showError(response.message || 'Google login failed.');
+                    } catch (error) {
+                        console.error('Firebase Google sign-in error:', error);
+                        const messages = {
+                            'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+                            'auth/popup-blocked': 'Allow popups for this site and try again.',
+                            'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication.',
+                            'auth/unauthorized-domain': 'This domain is not authorized in Firebase Authentication.',
+                            'auth/account-exists-with-different-credential': 'This email is already connected to another sign-in method. Please use that method to log in.'
+                        };
+                        showError(error.responseJSON?.message || messages[error.code] || error.message || 'Google login failed.');
+                    } finally {
+                        $button.prop('disabled', false).html(originalHtml);
+                    }
+                });
 
                 function firebaseErrorMessage(error) {
                     const messages = {
