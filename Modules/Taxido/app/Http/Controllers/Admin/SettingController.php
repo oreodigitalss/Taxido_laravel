@@ -24,7 +24,7 @@ class SettingController extends Controller
 
     public function update(Request $request, TaxidoSetting $taxidoSetting)
     {
-        return $this->repository->update($request->all(), $taxidoSetting?->id);
+        return $this->repository->updateSettings($request, $taxidoSetting?->id);
     }
     
 }

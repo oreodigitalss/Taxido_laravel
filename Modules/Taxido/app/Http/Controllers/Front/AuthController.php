@@ -167,7 +167,7 @@ class AuthController extends Controller
                 ->where('token', $otp)
                 ->where(function ($query) use ($input, $isEmail, $phone) {
                     if ($isEmail) {
-                        $query->where('email', $input);
+                        $query->whereRaw('LOWER(TRIM(email)) = ?', [$input]);
                     } else {
                         $query->where('phone', $phone);
                     }
@@ -181,9 +181,10 @@ class AuthController extends Controller
 
             $riderQuery = Rider::whereNull('deleted_at');
             if ($isEmail) {
-                $riderQuery->where('email', $input);
+                $riderQuery->whereRaw('LOWER(TRIM(email)) = ?', [$input]);
             } else {
-                $riderQuery->where('phone', $nationalPhone)->where('country_code', $countryCode);
+                $riderQuery->where('phone', $nationalPhone)
+                    ->whereRaw("REPLACE(REPLACE(TRIM(country_code), '+', ''), ' ', '') = ?", [$countryCode]);
             }
             $rider = $riderQuery->first();
 
@@ -197,7 +198,7 @@ class AuthController extends Controller
 
             if ($isEmail) {
                 // auth_tokens has no primary key; consume by email + token.
-                DB::table('auth_tokens')->where('email', $input)->where('token', $otp)->delete();
+                DB::table('auth_tokens')->whereRaw('LOWER(TRIM(email)) = ?', [$input])->where('token', $otp)->delete();
                 $request->session()->forget(['email_or_phone', 'otp_login_method']);
             }
 
@@ -205,6 +206,7 @@ class AuthController extends Controller
             $request->session()->regenerate();
             return redirect()->route('front.cab.dashboard.index')->with('success', 'Login successful!');
         } catch (Exception $e) {
+            report($e);
             return back()->withErrors(['otp' => 'An error occurred. Please try again.']);
         }
     }
@@ -326,7 +328,8 @@ class AuthController extends Controller
             }
 
             $riderQuery = Rider::whereNull('deleted_at');
-            $riderQuery->where('phone', $nationalPhone)->where('country_code', $countryCode);
+            $riderQuery->where('phone', $nationalPhone)
+                ->whereRaw("REPLACE(REPLACE(TRIM(country_code), '+', ''), ' ', '') = ?", [$countryCode]);
             $rider = $riderQuery->first();
             if (!$rider) {
                 return response()->json([

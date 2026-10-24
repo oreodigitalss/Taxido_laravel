@@ -3,7 +3,10 @@
 namespace Modules\Taxido\Repositories\Admin;
 
 use Exception;
+use Throwable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use App\Exceptions\ExceptionHandler;
 use Modules\Taxido\Models\TaxidoSetting;
 use Jackiedo\DotenvEditor\Facades\DotenvEditor;
@@ -30,7 +33,7 @@ class SettingRepository extends BaseRepository
         ]);
     }
 
-    public function update($request, $id)
+    public function updateSettings(Request $request, $id)
     {
         DB::beginTransaction();
         try {
@@ -45,19 +48,24 @@ class SettingRepository extends BaseRepository
                 $this->processFields($request, $taxidoSettings, $section, $imageFields);
             }
 
-            $request = array_diff_key($request, array_flip(['_token', '_method']));
-            if (isset($request['referral'])) {
-                $this->validateReferralSettings($request['referral']);
+            // Keep only submitted form values here; uploaded files are handled
+            // separately so Symfony UploadedFile instances never enter JSON.
+            $values = $request->request->all();
+            $values = array_diff_key($values, array_flip(['_token', '_method']));
+            if (isset($values['referral'])) {
+                $this->validateReferralSettings($values['referral']);
             }
 
-            $taxidoSettingsValue = $taxidoSettings->cabbooking_values;
-            $request['location']['google_map_api_key'] = decryptKey($request['location']['google_map_api_key']);
+            if (isset($values['location']['google_map_api_key'])) {
+                $values['location']['google_map_api_key'] = decryptKey($values['location']['google_map_api_key']);
+            }
+
             $taxidoSettings->update([
-                'cabbooking_values' => $request,
+                'cabbooking_values' => $values,
             ]);
 
             DB::commit();
-            $this->env($request);
+            $this->env($values);
             return to_route('admin.taxido-setting.index')->with('success', __('static.settings.update_successfully'));
 
         } catch (Exception $e) {
@@ -101,22 +109,34 @@ class SettingRepository extends BaseRepository
 
                 DotenvEditor::save();
             }
-        } catch (Exception $e) {
-
-            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        } catch (Throwable $e) {
+            // The settings have already been committed at this point. A
+            // dotenv write failure must not turn a successful save into a
+            // blank/500 response; keep the failure visible in the log.
+            Log::error('Unable to update Google Maps API key in .env: '.$e->getMessage());
         }
     }
 
-    private function processFields(&$request, $taxidoSettings, $section, array $fields)
+    private function processFields(Request $request, $taxidoSettings, $section, array $fields)
     {
         foreach ($fields as $field) {
-            $requestValue = $request[$section][$field] ?? null;
+            $requestValue = $request->file($section.'.'.$field);
 
-            if ($requestValue) {
+            if ($request->hasFile($section.'.'.$field)) {
                 $media = $this->storeImage($requestValue);
-                $request[$section][$field] = $media->asset_url;
-            } else {
-                $request[$section][$field] = $taxidoSettings->cabbooking_values[$section][$field] ?? null;
+                $request->merge([$section => array_merge(
+                    $request->input($section, []),
+                    [$field => $media->asset_url]
+                )]);
+            }
+
+            // The request's raw input array is persisted below. Preserve the
+            // existing URL when no replacement file was uploaded.
+            if (!$request->hasFile($section.'.'.$field)) {
+                $request->merge([$section => array_merge(
+                    $request->input($section, []),
+                    [$field => $taxidoSettings->cabbooking_values[$section][$field] ?? null]
+                )]);
             }
         }
     }
@@ -125,8 +145,6 @@ class SettingRepository extends BaseRepository
     {
         $attachments = createAttachment();
         $media = addMedia($attachments, $request);
-
-        $attachments->delete($attachments?->id);
         return $media;
     }
 
