@@ -68,7 +68,7 @@ class User extends Authenticatable implements HasMedia
             'email_verified_at' => 'datetime',
             'is_verified' => 'integer',
             'password' => 'hashed',
-            'phone' => 'integer',
+            'phone' => 'string',
             'status' => 'integer',
             'created_by_id' => 'integer',
             'referred_by_id' => 'integer',

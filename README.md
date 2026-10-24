@@ -1,66 +1,35 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Taxido Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel backend and admin panel for the Taxido ride booking application.
 
-## About Laravel
+## Local setup
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Requirements: PHP 8.2+, Composer, Node.js/npm, and the PHP extensions required by Laravel and the installed modules.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. Copy `.env.example` to `.env` and configure the database, mail, Firebase, and other services you use.
+2. Keep the existing licensed installation's `APP_ID` in the local `.env`. This is the Bladelib project ID; it is different from the Envato purchase code. Do not commit `.env` or license values.
+3. Install dependencies with `composer install` and `npm install`.
+4. Generate an `APP_KEY` with `php artisan key:generate` if this is a new installation.
+5. Build frontend assets with `npm run build`.
+6. Run database migrations only for a new or intentionally migrated database: `php artisan migrate`.
+7. Start the local app with `php artisan serve`.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Firebase login
 
-## Learning Laravel
+Set `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, and `FIREBASE_APP_ID` for the same Firebase project. Add every production hostname used by the site to Firebase Authentication's authorized domains. Google and phone identity tokens are verified against `FIREBASE_PROJECT_ID` on the server.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## cPanel deployment notes
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- Deploy the application code and `composer.lock`; keep `.env`, service account JSON, and the purchase code out of GitHub.
+- Configure the production `.env` with `APP_ENV=production`, `APP_DEBUG=false`, the production `APP_URL`, database/mail values, Firebase values, and the matching `APP_ID` from this licensed installation.
+- If the domain has not been activated for this installation, use the vendor's license workflow with the Envato purchase code and have the vendor confirm domain activation. Do not use the purchase code as `APP_ID`.
+- Ensure `storage` and `bootstrap/cache` are writable by PHP. Run `composer install --no-dev --optimize-autoloader`, `npm ci`, and `npm run build` in the deployment workflow where Node is available.
+- Set `LOG_LEVEL=info` (or a more restrictive level) in production. The application logging fallback is now `info`; an explicit `.env` value takes precedence.
+- Use Redis for `CACHE_STORE`, `SESSION_DRIVER`, and `QUEUE_CONNECTION` when Redis is available. For database-backed cache and queues, confirm the required tables exist and run a queue worker under a process manager.
+- After updating `.env`, run `php artisan optimize:clear` once to remove stale caches, then `php artisan optimize` to cache configuration, routes, events, and views from the production environment. Keep `APP_ID` in the environment because the vendor package also reads it directly.
+- Run `php artisan migrate --force` only when the release includes reviewed database migrations. Restart queue workers after deployment so they load the new code.
+- Point the domain document root to the Laravel `public` directory. Never expose `.env`, `vendor`, or application source through the web root.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Checks
 
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Run the PHP test suite with `php artisan test`, and build frontend assets with `npm run build`.
