@@ -53,14 +53,19 @@ import './echo';
             const buttonName = button.attr('name');
             form.find('input[name="_clicked_button"]').remove();
 
-            form.append(`<input type="hidden" name="${buttonName}" value="1">`);
+            if (buttonName) {
+                form.append(`<input type="hidden" name="${buttonName}" value="1">`);
+            }
 
             $('.invalid-feedback').removeClass('d-block');
 
             if (form.valid()) {
                 button.prop('disabled', true);
                 button.append('<span class="spinner"></span>');
-                form.submit();
+                // Submit the validated form directly. jQuery's submit()
+                // shorthand re-triggers submit handlers (including plugins)
+                // and can leave the browser on an empty response after POST.
+                HTMLFormElement.prototype.submit.call(form[0]);
             }
         });
 

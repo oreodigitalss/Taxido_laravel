@@ -187,7 +187,8 @@ if (! function_exists('getTotalDriverRidesByStatus')) {
 if (! function_exists('getTotalRiders')) {
     function getTotalRiders($start_date = null, $end_date = null)
     {
-        $query = Rider::where('status', true);
+        $query = Rider::where('status', true)
+            ->where('system_reserve', false);
         if ($start_date && $end_date) {
             return $query->whereBetween('created_at', [$start_date, $end_date])->count();
         }
@@ -356,7 +357,8 @@ if (! function_exists('calculatePercentage')) {
 if (! function_exists('getTotalDrivers')) {
     function getTotalDrivers($start_date = null, $end_date = null, $is_verified = null)
     {
-        $query = Driver::where('status', true);
+        $query = Driver::where('status', true)
+            ->where('system_reserve', false);
 
         if ($is_verified !== null) {
             $query->where('is_verified', $is_verified);

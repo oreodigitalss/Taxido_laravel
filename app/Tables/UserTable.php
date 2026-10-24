@@ -19,11 +19,11 @@ class UserTable
 
     public function getUser()
     {
-        $roleIds = getNonAdminRolesList()->pluck('id')->toArray();
-        return $this->user->where('system_reserve', false)
-            ->whereHas('roles', function ($query) use ($roleIds) {
-                $query->whereIn('id', $roleIds);
-            });
+        // Users can have roles owned by enabled modules (for example Taxido
+        // riders/drivers or Ticket users). Filtering to module = NULL made
+        // those existing accounts disappear from this list even though the
+        // create form's unique checks still see them in the users table.
+        return $this->user->where('system_reserve', false);
     }
 
     public function getData()

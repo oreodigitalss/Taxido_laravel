@@ -27,7 +27,7 @@ class RegisterController extends Controller
             // login with a clear message instead of a generic unique error.
             $existingAccount = User::whereNull('deleted_at')
                 ->where('phone', $phone)
-                ->where('country_code', $countryCode)
+                ->whereRaw("REPLACE(REPLACE(TRIM(country_code), '+', ''), ' ', '') = ?", [$countryCode])
                 ->first();
 
             if ($existingAccount) {
@@ -82,6 +82,7 @@ class RegisterController extends Controller
             return redirect()->route('front.cab.dashboard.index')->with('success', 'Registration successful!');
         } catch (Exception $e) {
             DB::rollback();
+            report($e);
             return back()->withErrors(['error' => 'Registration failed: ' . $e->getMessage()])->withInput();
         }
     }
