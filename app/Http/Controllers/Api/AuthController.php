@@ -167,7 +167,13 @@ class AuthController extends Controller
                 throw new Exception($validator->messages()->first(), 422);
             }
 
-            $user = User::where('email', $request->email)->orWhere('phone', (string) $request->phone)->first();
+            $userQuery = User::query();
+            if ($request->filled('email')) {
+                $userQuery->where('email', $request->email);
+            } else {
+                $userQuery->where('phone', (string) $request->phone);
+            }
+            $user = $userQuery->first();
             if (! $user && isset($request->email)) {
                 throw new Exception(__('static.auth.no_linked_email'), 400);
             }

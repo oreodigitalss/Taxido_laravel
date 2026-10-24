@@ -38,3 +38,5 @@ public/admin/assets/firebase.json
 storage/dotenv-editor
 storage/logs
 Modules/Taxido/firebase-functions/functions/node_modules
+!.env.example
+!composer.lock
