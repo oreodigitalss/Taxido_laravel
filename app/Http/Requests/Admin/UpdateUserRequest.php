@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
@@ -24,11 +25,14 @@ class UpdateUserRequest extends FormRequest
     public function rules()
     {
 
-        $id = $this->route('user') ? $this->route('user')->id : $this->id;
+        $id = $this->route('user')?->id;
         return [
-            'name' => ['required','max:255'],
-            'email' => ['required','email', 'unique:users,email,'.$id.',id,deleted_at,NULL'],
-            'phone' => ['required','numeric','digits_between:6,15'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($id)->whereNull('deleted_at')],
+            'phone' => ['required', 'digits_between:6,15', Rule::unique('users', 'phone')->ignore($id)->whereNull('deleted_at')],
+            'country_code' => ['nullable', 'string', 'max:8'],
+            'status' => ['required', 'boolean'],
+            'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
         ];
     }
 
@@ -37,6 +41,7 @@ class UpdateUserRequest extends FormRequest
         $this->merge([
             'phone' => (string) $this->phone,
             'status' => (int) $this->status,
+            'email' => is_string($this->email) ? strtolower(trim($this->email)) : $this->email,
         ]);
     }
 }

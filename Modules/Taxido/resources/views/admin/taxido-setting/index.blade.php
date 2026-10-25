@@ -1831,6 +1831,43 @@
             "use strict";
             $(document).ready(function () {
 
+                $('#taxidosettingsForm').on('submit', function (event) {
+                    event.preventDefault();
+
+                    const form = this;
+                    const $submitButtons = $(form).find('[type="submit"]');
+                    const formData = new FormData(form);
+
+                    $submitButtons.prop('disabled', true);
+
+                    $.ajax({
+                        url: form.action,
+                        method: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        dataType: 'json',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        success: function (response) {
+                            toastr.success(response.message || '{{ __('static.settings.update_successfully') }}');
+                        },
+                        error: function (xhr) {
+                            const response = xhr.responseJSON || {};
+                            const validationMessage = response.errors
+                                ? Object.values(response.errors).flat()[0]
+                                : null;
+
+                            toastr.error(validationMessage || response.message || 'Settings save nahi ho saki. Please dobara try karein.');
+                        },
+                        complete: function () {
+                            $submitButtons.prop('disabled', false);
+                        }
+                    });
+                });
+
                  $('.fileInput').on('change', function(event) {
                 const input = this;
                 const previewId = $(this).data('preview-id');

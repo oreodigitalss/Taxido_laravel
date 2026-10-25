@@ -29,7 +29,7 @@ class UserRepository extends BaseRepository
 
     public function index($userTable)
     {
-        if (request()['action']) {
+        if (request()->has('action')) {
             return redirect()->back();
         }
 
@@ -50,7 +50,7 @@ class UserRepository extends BaseRepository
                 'password' => Hash::make($request->password),
             ]);
 
-            $role = $this->role->where('id',$request?->role_id)->get();
+            $role = $this->role->findOrFail($request->role_id);
             $user->assignRole($role);
             if ($request->notify) {
                 event(new NewUserEvent($user, $request->password));
@@ -87,11 +87,11 @@ class UserRepository extends BaseRepository
                 return redirect()->route('admin.user.index')->with('error', __('static.users.system_reserved_not_editable'));
             }
 
-            $user->update($request);
+            $user->update(Arr::only($request, ['name', 'email', 'country_code', 'phone', 'status']));
             $user->address;
 
             if (isset($request['role_id'])) {
-                $role = $this->role->find($request['role_id']);
+                $role = $this->role->findOrFail($request['role_id']);
                 $user->syncRoles($role);
             }
 
@@ -247,7 +247,7 @@ class UserRepository extends BaseRepository
 
             Excel::import(new UserImport(), $tempFile);
 
-            if ($activeTab === 'google_sheet' && file_exists($tempFile)) {
+            if ($activeTab === 'direct-link' && $tempFile && file_exists($tempFile)) {
                 unlink($tempFile);
             }
 

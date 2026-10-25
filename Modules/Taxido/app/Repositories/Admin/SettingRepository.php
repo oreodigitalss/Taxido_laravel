@@ -60,12 +60,22 @@ class SettingRepository extends BaseRepository
                 $values['location']['google_map_api_key'] = decryptKey($values['location']['google_map_api_key']);
             }
 
+            $previousGoogleMapKey = data_get($taxidoSettings->cabbooking_values, 'location.google_map_api_key');
+            $googleMapKeyChanged = data_get($values, 'location.google_map_api_key') !== $previousGoogleMapKey;
+
             $taxidoSettings->update([
                 'cabbooking_values' => $values,
             ]);
 
             DB::commit();
-            $this->env($values);
+            $this->env($values, $googleMapKeyChanged);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('static.settings.update_successfully'),
+                ]);
+            }
+
             return to_route('admin.taxido-setting.index')->with('success', __('static.settings.update_successfully'));
 
         } catch (Exception $e) {
@@ -98,11 +108,23 @@ class SettingRepository extends BaseRepository
         }
     }
 
-    public function env($cabbooking_values)
+    public function env($cabbooking_values, bool $googleMapKeyChanged = true)
     {
         try {
-            if (isset($cabbooking_values['location']['google_map_api_key'])){
+            if ($googleMapKeyChanged && isset($cabbooking_values['location']['google_map_api_key'])){
                 $google_map_api_key = $cabbooking_values['location']['google_map_api_key'];
+
+                // Avoid touching .env on image-only/settings saves. Laravel's
+                // built-in server restarts when .env changes, interrupting the
+                // upload request and briefly refusing new connections.
+                $currentKey = DotenvEditor::keyExists('GOOGLE_MAP_API_KEY')
+                    ? DotenvEditor::getValue('GOOGLE_MAP_API_KEY')
+                    : null;
+
+                if ($currentKey === $google_map_api_key) {
+                    return;
+                }
+
                 DotenvEditor::setKeys([
                     'GOOGLE_MAP_API_KEY' => $google_map_api_key,
                 ]);
