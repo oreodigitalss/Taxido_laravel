@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateUserRequest extends FormRequest
@@ -30,6 +31,7 @@ class CreateUserRequest extends FormRequest
             'password' => ['required', 'min:8'],
             'confirm_password' => ['required', 'same:password'],
             'status' => ['required'],
+            'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
         ];
     }
 
@@ -39,6 +41,7 @@ class CreateUserRequest extends FormRequest
             'notify' => (int) $this->notify,
             'status' => (int) $this->status,
             'phone' => (string) $this->phone,
+            'email' => is_string($this->email) ? strtolower(trim($this->email)) : $this->email,
         ]);
     }
 

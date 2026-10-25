@@ -72,8 +72,11 @@ class UserTable
                 $user->email = __('static.demo_mode');
             }
             $user->role_name = $user->role?->name;
-            $user->date = $user->created_at->format('Y-m-d h:i:s A');
-            $user->date = formatDateBySetting($user->created_at);
+            // Imported/legacy accounts can have no created_at value. Keep the
+            // list usable for those rows instead of failing the whole page.
+            $user->date = $user->created_at
+                ? formatDateBySetting($user->created_at)
+                : '—';
         });
 
         $tableConfig = [
@@ -148,11 +151,11 @@ class UserTable
 
     public function restoreHandler(): void
     {
-        $this->user->whereIn('id', $this->request->ids)->restore();
+        $this->user->withTrashed()->whereIn('id', $this->request->ids)->restore();
     }
 
     public function deleteHandler(): void
     {
-        $this->user->whereIn('id', $this->request->ids)->forceDelete();
+        $this->user->withTrashed()->whereIn('id', $this->request->ids)->forceDelete();
     }
 }
