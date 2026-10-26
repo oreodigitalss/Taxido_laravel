@@ -96,8 +96,10 @@ class Rider extends User implements HasMedia
             $rider->address()->delete();
             $rider->rides()->delete();
             $rider->wallet()->delete();
-            $rider->referralBonuses()->delete();
-            $rider->referredBonuses()->delete();
+            // User IDs are globally unique. Query by ID so deletes also work
+            // with older referral-bonus schemas that lack type columns.
+            ReferralBonus::where('referrer_id', $rider->id)->delete();
+            ReferralBonus::where('referred_id', $rider->id)->delete();
         });
 
         static::restored(function ($rider) {
@@ -106,8 +108,8 @@ class Rider extends User implements HasMedia
             $rider->address()->restore();
             $rider->rides()->restore();
             $rider->wallet()->restore();
-            $rider->referralBonuses()->withTrashed()->restore();
-            $rider->referredBonuses()->withTrashed()->restore();
+            ReferralBonus::withTrashed()->where('referrer_id', $rider->id)->restore();
+            ReferralBonus::withTrashed()->where('referred_id', $rider->id)->restore();
         });
     }
 

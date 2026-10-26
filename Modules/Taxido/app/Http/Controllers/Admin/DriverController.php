@@ -51,7 +51,6 @@ class DriverController extends Controller
      */
     public function store(CreateDriverRequest $request)
     {
-        Log::info($request->all());
         return $this->repository->store($request);
     }
 

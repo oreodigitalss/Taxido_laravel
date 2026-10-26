@@ -3,6 +3,7 @@
 namespace Modules\Taxido\Tables;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\Taxido\Enums\RoleEnum;
 use Modules\Taxido\Models\Rider;
 
@@ -153,7 +154,9 @@ public function deactiveHandler(): void
 
 public function trashHandler(): void
 {
-  $this->rider->whereIn('id', $this->request->ids)->delete();
+  DB::transaction(function () {
+    $this->rider->whereIn('id', $this->request->ids)->get()->each->delete();
+  });
 }
 
 public function restoreHandler(): void
@@ -163,6 +166,8 @@ public function restoreHandler(): void
 
 public function deleteHandler(): void
 {
-  $this->rider->whereIn('id', $this->request->ids)->forceDelete();
+  DB::transaction(function () {
+    $this->rider->withTrashed()->whereIn('id', $this->request->ids)->get()->each->forceDelete();
+  });
 }
 }

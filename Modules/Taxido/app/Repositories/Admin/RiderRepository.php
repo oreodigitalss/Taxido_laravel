@@ -150,7 +150,11 @@ class RiderRepository extends BaseRepository
         try {
 
             $rider = $this->model->findOrFail($id);
-            $rider->destroy($id);
+            DB::transaction(function () use ($rider) {
+                if (!$rider->delete()) {
+                    throw new Exception('Rider could not be deleted.');
+                }
+            });
             return redirect()->back()->with('success', __('taxido::static.riders.delete_successfully'));
 
         } catch (Exception $e) {
