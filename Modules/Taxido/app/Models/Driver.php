@@ -130,6 +130,8 @@ class Driver extends User implements HasMedia
             $driver->payment_account()->delete();
             $driver->withdrawRequests()->delete();
             $driver->subscription()->delete();
+            ReferralBonus::where('referrer_id', $driver->id)->delete();
+            ReferralBonus::where('referred_id', $driver->id)->delete();
         });
 
         static::restored(function ($driver) {
@@ -141,6 +143,8 @@ class Driver extends User implements HasMedia
             $driver->payment_account()->withTrashed()->restore();
             $driver->withdrawRequests()->withTrashed()->restore();
             $driver->subscription()->withTrashed()->restore();
+            ReferralBonus::withTrashed()->where('referrer_id', $driver->id)->restore();
+            ReferralBonus::withTrashed()->where('referred_id', $driver->id)->restore();
         });
     }
 

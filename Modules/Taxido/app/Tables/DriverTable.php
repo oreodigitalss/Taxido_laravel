@@ -3,6 +3,7 @@
 namespace Modules\Taxido\Tables;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\Taxido\Models\Driver;
 use Modules\Taxido\Enums\RoleEnum;
 use Illuminate\Support\Facades\Log;
@@ -191,7 +192,9 @@ class DriverTable
 
     public function trashHandler(): void
     {
-        $this->driver->whereIn('id', $this->request->ids)->delete();
+        DB::transaction(function () {
+            $this->driver->whereIn('id', $this->request->ids)->get()->each->delete();
+        });
     }
 
     public function restoreHandler(): void
@@ -201,6 +204,8 @@ class DriverTable
 
     public function deleteHandler(): void
     {
-        $this->driver->whereIn('id', $this->request->ids)->forceDelete();
+        DB::transaction(function () {
+            $this->driver->withTrashed()->whereIn('id', $this->request->ids)->get()->each->forceDelete();
+        });
     }
 }

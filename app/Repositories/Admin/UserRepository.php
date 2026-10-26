@@ -74,17 +74,17 @@ class UserRepository extends BaseRepository
 
     public function update($request, $id)
     {
+        $user = $this->model->findOrFail($id);
+        if ($user->system_reserve) {
+            return redirect()->route('admin.user.index')->with('error', __('static.users.system_reserved_not_editable'));
+        }
+
         DB::beginTransaction();
         try {
 
             $request = Arr::except($request, ['password']);
             if (isset($request['phone'])) {
                 $request['phone'] = (string) $request['phone'];
-            }
-
-            $user = $this->model->findOrFail($id);
-            if ($user->system_reserve) {
-                return redirect()->route('admin.user.index')->with('error', __('static.users.system_reserved_not_editable'));
             }
 
             $user->update(Arr::only($request, ['name', 'email', 'country_code', 'phone', 'status']));
@@ -137,7 +137,11 @@ class UserRepository extends BaseRepository
         try {
 
             $user = $this->model->findOrFail($id);
-            $user->destroy($id);
+            DB::transaction(function () use ($user) {
+                if (!$user->delete()) {
+                    throw new Exception('User could not be deleted.');
+                }
+            });
             return redirect()->back()->with('success', __('static.users.delete_successfully'));
 
         } catch (Exception $e) {

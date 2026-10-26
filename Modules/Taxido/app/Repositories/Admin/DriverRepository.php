@@ -233,9 +233,15 @@ class DriverRepository extends BaseRepository
                 event(new DriverLocationUpdated($driver->id, ['lat' => $lat, 'lng' => $lng], $realtimeData));
             }
 
-        } catch (Exception $e) {
-
-            throw new ExceptionHandler("Failed to sync driver realtime data: {$e->getMessage()}", $e->getCode());
+        } catch (\Throwable $e) {
+            // Realtime state is an optional side effect. A missing Redis PHP
+            // extension or an unavailable Redis server must not roll back a
+            // driver's database CRUD operation.
+            Log::warning('Driver realtime state sync failed', [
+                'driver_id' => $driver?->id,
+                'exception_type' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -276,11 +282,14 @@ class DriverRepository extends BaseRepository
 
     public function destroy($id)
     {
-        Log::info('inside destroy');
         try {
 
             $driver = $this->model->findOrFail($id);
-            $driver->destroy($id);
+            DB::transaction(function () use ($driver) {
+                if (!$driver->delete()) {
+                    throw new Exception('Driver could not be deleted.');
+                }
+            });
             // $this->realtimeDelete('driverTrack', (string) $id);
 
             return redirect()->back()->with('success', __('taxido::static.drivers.delete_successfully'));

@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Enums\RoleEnum;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserTable
 {
@@ -146,7 +147,9 @@ class UserTable
 
     public function trashHandler(): void
     {
-        $this->user->whereIn('id', $this->request->ids)->delete();
+        DB::transaction(function () {
+            $this->user->whereIn('id', $this->request->ids)->get()->each->delete();
+        });
     }
 
     public function restoreHandler(): void
@@ -156,6 +159,8 @@ class UserTable
 
     public function deleteHandler(): void
     {
-        $this->user->withTrashed()->whereIn('id', $this->request->ids)->forceDelete();
+        DB::transaction(function () {
+            $this->user->withTrashed()->whereIn('id', $this->request->ids)->get()->each->forceDelete();
+        });
     }
 }
