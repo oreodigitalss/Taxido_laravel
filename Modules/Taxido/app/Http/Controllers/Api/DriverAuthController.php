@@ -819,6 +819,77 @@ class DriverAuthController extends Controller
         }
     }
 
+    public function socialLogin(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'login_type' => 'required|in:google',
+                'id_token' => 'required|string',
+                'fcm_token' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                throw new Exception($validator->messages()->first(), 422);
+            }
+
+            $googleClientId = config('services.google.client_id');
+            if (!$googleClientId) {
+                throw new Exception('Google sign-in is not configured on the server.', 503);
+            }
+
+            $googleUser = (new \Google_Client(['client_id' => $googleClientId]))
+                ->verifyIdToken($request->id_token);
+
+            if (!is_array($googleUser)) {
+                throw new Exception('Google identity token is invalid.', 401);
+            }
+
+            $email = strtolower(trim((string) ($googleUser['email'] ?? '')));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)
+                || !in_array($googleUser['email_verified'] ?? false, [true, 'true', 1, '1'], true)) {
+                throw new Exception('Google identity token is invalid or the email is not verified.', 401);
+            }
+
+            $driver = Driver::whereRaw('LOWER(email) = ?', [$email])
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (!$driver) {
+                throw new Exception('No driver account is registered with this Google email.', 404);
+            }
+
+            if (!$driver->status) {
+                throw new Exception(__('Account is disabled'), 403);
+            }
+
+            if ($request->fcm_token) {
+                $driver->fcm_token = $request->fcm_token;
+                $driver->save();
+            }
+
+            $token = $driver->createToken('auth_token')->plainTextToken;
+            $roleType = $driver->getRoleNames()->first();
+            $driver->tokens()->update(['role_type' => $roleType]);
+
+            $taxidoSettings = getTaxidoSettings();
+            $driverIsVerified = $driver->is_verified;
+            if (!$taxidoSettings['activation']['driver_verification']) {
+                $driverIsVerified = 1;
+            }
+
+            return response()->json([
+                'success' => true,
+                'id' => $driver->id,
+                'access_token' => $token,
+                'role_type' => $roleType,
+                'is_registered' => true,
+                'is_verified' => $driverIsVerified,
+            ], 200);
+        } catch (Exception $e) {
+            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        }
+    }
+
     public function deleteAccount()
     {
         DB::beginTransaction();
