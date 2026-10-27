@@ -33,6 +33,7 @@ Route::group(['middleware' => ['localization','throttle:api']], function () {
     Route::post('driver/register', 'DriverAuthController@driverRegister')->middleware('throttle:5,1');
     Route::post('driver/forgot-password', 'DriverAuthController@forgotPassword')->middleware('throttle:5,1');
     Route::post('driver/update-password', 'DriverAuthController@updatePassword')->middleware('throttle:5,1');
+    Route::post('driver/social/login', 'DriverAuthController@socialLogin')->middleware('throttle:5,1');
     Route::delete('driver/deleteAccount', 'DriverAuthController@deleteAccount');
     Route::post('driver/firebase/auth', 'DriverAuthController@verifyFirebaseAuthToken')->middleware('throttle:5,1');
 
