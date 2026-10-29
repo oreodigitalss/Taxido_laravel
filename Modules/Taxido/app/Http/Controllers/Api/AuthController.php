@@ -486,8 +486,20 @@ class AuthController extends Controller
                     throw new Exception('Google sign-in is not configured on the server.', 503);
                 }
 
-                $googleClient = new \Google_Client(['client_id' => $googleClientId]);
-                $googleUser = $googleClient->verifyIdToken($request->id_token);
+                $googleUser = false;
+                $allowedGoogleClients = array_unique([
+                    $googleClientId,
+                    '185030684517-67lt0kf6vak18k4vqqv2n3u4i898msue.apps.googleusercontent.com',
+                ]);
+                foreach ($allowedGoogleClients as $allowedGoogleClientId) {
+                    $candidate = (new \Google_Client(['client_id' => $allowedGoogleClientId]))
+                        ->verifyIdToken($request->id_token);
+                    if (is_array($candidate)) {
+                        $googleUser = $candidate;
+                        break;
+                    }
+                }
+
                 if (!is_array($googleUser)) {
                     throw new Exception('Google identity token is invalid.', 401);
                 }
