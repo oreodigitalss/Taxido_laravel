@@ -61,6 +61,10 @@ class ExceptionHandler extends Exception
             }
         } else {
             Log::error("Application Exception: " . $message);
+            if (str_contains($message, "Pusher error:")) {
+                $message = "Live ride updates are temporarily unavailable. Please try again shortly.";
+                $statusCode = 503;
+            }
         }
 
         if ($request->expectsJson()) {

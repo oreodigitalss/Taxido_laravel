@@ -559,49 +559,54 @@ class AuthController extends Controller
 
     public function verifyFirebaseAuthToken(Request $request)
     {
-        try {
-
-            $validator = Validator::make($request->all(), [
-                'country_code' => 'required',
-                'phone' => 'required|min:6|max:15',
-                'firebase_token' => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                throw new Exception($validator->messages()->first(), 422);
-            }
-
-            $firebaseToken = $request->firebase_token;
-            $firebaseAuth = (new Factory)->withServiceAccount(config('services.firebase.credentials'))?->createAuth();
-            $verifiedToken = $firebaseAuth->verifyIdToken($firebaseToken);
-            $rider = Rider::where('phone', $request->phone)?->where('country_code', $request->country_code)?->whereNull('deleted_at')?->first();
-            if ($verifiedToken) {
-                if (!$rider) {
-                    return response()->json([
-                        'id' => null,
-                        'is_registered' => false,
-                        'success' => true,
-                        'role'  => RoleEnum::RIDER
-                    ], 200);
-                }
-
-                $token = $rider->createToken('auth_token')?->plainTextToken;
-                return response()->json([
-                    'id' => $rider?->id,
-                    'access_token'  => $token,
-                    'is_registered' => true,
-                    'success' => true,
-                    'role'  => RoleEnum::RIDER
-                ], 200);
-            }
-
-            throw new Exception("Token Not found", 422);
-        } catch (Exception $e) {
-
-            throw new ExceptionHandler($e->getMessage(), $e->getCode());
+        $validator = Validator::make($request->all(), [
+            'country_code' => 'required|string',
+            'phone' => 'required|string',
+            'firebase_token' => 'required|string',
+            'fcm_token' => 'nullable|string',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Phone number, country code and Firebase token are required.'], 422);
         }
+        $countryCode = ltrim(trim($request->country_code), '+');
+        $phone = trim($request->phone);
+        if (!preg_match('/^[1-9][0-9]{0,3}$/D', $countryCode)
+            || !preg_match('/^[0-9]{6,14}$/D', $phone)
+            || strlen($countryCode.$phone) > 15) {
+            return response()->json(['success' => false, 'message' => 'Invalid phone number or country code.'], 422);
+        }
+        try {
+            $verifier = \Kreait\Firebase\JWT\IdTokenVerifier::createWithProjectId('rydap-com');
+            $verifiedToken = $verifier->verifyIdToken($request->firebase_token);
+        } catch (\Kreait\Firebase\JWT\Error\IdTokenVerificationFailed $e) {
+            return response()->json(['success' => false, 'message' => 'Phone verification expired or is invalid. Please request a new SMS code.'], 401);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Rider Firebase verification unavailable.', ['exception' => get_class($e)]);
+            return response()->json(['success' => false, 'message' => 'Phone verification is temporarily unavailable. Please try again.'], 503);
+        }
+        $claims = $verifiedToken->payload();
+        $firebaseClaims = $claims['firebase'] ?? [];
+        $verifiedPhone = $claims['phone_number'] ?? '';
+        if (!is_string($verifiedPhone)
+            || !hash_equals('+'.$countryCode.$phone, $verifiedPhone)
+            || !is_array($firebaseClaims)
+            || ($firebaseClaims['sign_in_provider'] ?? null) !== 'phone') {
+            return response()->json(['success' => false, 'message' => 'Please verify the same phone number using SMS.'], 401);
+        }
+        $rider = Rider::where('phone', $phone)->where('country_code', $countryCode)->whereNull('deleted_at')->first();
+        if (!$rider) {
+            return response()->json(['id' => null, 'is_registered' => false, 'success' => true, 'role' => RoleEnum::RIDER], 200);
+        }
+        if (!$rider->status) {
+            return response()->json(['success' => false, 'message' => 'This account is inactive. Please contact support.'], 403);
+        }
+        if ($request->filled('fcm_token')) {
+            $rider->fcm_token = $request->fcm_token;
+            $rider->save();
+        }
+        $token = $rider->createToken('auth_token')->plainTextToken;
+        return response()->json(['id' => $rider->id, 'access_token' => $token, 'is_registered' => true, 'success' => true, 'role' => RoleEnum::RIDER], 200);
     }
-
     public function riderRegister(Request $request)
     {
         DB::beginTransaction();
