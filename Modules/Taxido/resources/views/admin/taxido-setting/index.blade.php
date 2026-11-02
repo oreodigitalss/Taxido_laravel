@@ -1864,6 +1864,7 @@
                         },
                         complete: function () {
                             $submitButtons.prop('disabled', false);
+                            $submitButtons.find('.spinner').remove();
                         }
                     });
                 });

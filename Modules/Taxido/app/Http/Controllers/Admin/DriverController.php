@@ -159,11 +159,14 @@ class DriverController extends Controller
     
                     if ($activeRide) {
                         Log::info('hii');
+                        // rides.rider is also a JSON column, so property access
+                        // returns that array instead of the eager-loaded relation.
+                        $rider = $activeRide->getRelation('rider');
                         $data['ride_number'] = $activeRide->ride_number;
                         $data['ride_id'] = $activeRide->id;
-                        $data['rider_name'] = $activeRide->rider?->name;
-                        $data['rider_email'] = $activeRide->rider?->email;
-                        $data['rider_image'] = $activeRide->rider?->profile_image?->original_url;
+                        $data['rider_name'] = $rider?->name;
+                        $data['rider_email'] = $rider?->email;
+                        $data['rider_image'] = $rider?->profile_image?->original_url;
                         $data['service_name'] = $activeRide->service?->name;
                         $data['service_category_name'] = $activeRide->service_category?->name;
                         $data['vehicle_image'] = $activeRide->vehicle_type?->vehicle_image?->original_url;

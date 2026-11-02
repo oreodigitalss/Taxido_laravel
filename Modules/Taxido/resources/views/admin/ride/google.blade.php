@@ -1,5 +1,5 @@
 @push('scripts')
-<script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAP_API_KEY') }}&libraries=places,geometry,drawing&callback=initMap" defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps_browser.api_key') }}&libraries=places,geometry,drawing&callback=initMap" defer></script>
 <script>
     var locationCoordinates = <?php echo json_encode($locationCoordinates); ?>
 

@@ -3,6 +3,7 @@
 namespace Modules\Taxido\Http\Controllers\Api;
 
 use Exception;
+use Modules\Taxido\Services\DriverDocumentUpload;
 use App\Models\User;
 use App\Exceptions\ExceptionHandler;
 use App\Http\Controllers\Controller;
@@ -404,6 +405,8 @@ class DriverAuthController extends Controller
         try {
 
             $referrerId = null;
+            $request = DriverDocumentUpload::prepare($request);
+
             $validator = Validator::make($request->all(), [
                 'name' => 'required',
                 'email' => 'required|string|email|max:255',
@@ -412,8 +415,9 @@ class DriverAuthController extends Controller
                 'country_code' => 'required',
                 'phone' => 'required|min:6|max:15',
                 'referral_code' => 'nullable|string',
-                'documents.*.slug' => 'exists:documents,slug,deleted_at,NULL',
-                'documents.*.file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+                'documents' => 'required|array|min:1',
+                'documents.*.slug' => 'required|exists:documents,slug,deleted_at,NULL',
+                'documents.*.file' => 'required|file|mimes:jpeg,png,jpg,pdf|max:300',
                 'service_id' => 'required|exists:services,id,deleted_at,NULL',
                 'service_category_id' => 'nullable|exists:service_categories,id,deleted_at,NULL',
                 'preferences.*' => 'nullable|exists:preferences,id,deleted_at,NULL',
@@ -425,6 +429,9 @@ class DriverAuthController extends Controller
                 'vehicle_type_id' => [Rule::requiredIf(getServiceTypeById($request->service_id) == ServicesEnum::FINDDRIVER), 'nullable', 'exists:vehicle_types,id,deleted_at,NULL'],
                 'gear_type' => [Rule::requiredIf(getServiceTypeById($request->service_id) == ServicesEnum::FINDDRIVER), 'nullable','in:automatic,manual'],
 
+            ], [
+                'documents.*.file.required' => 'Every document file is required. Please select the missing file again.',
+                'documents.*.file.max' => 'Each document must be 300 KB or smaller.',
             ]);
 
             if ($validator->fails()) {
@@ -495,9 +502,12 @@ class DriverAuthController extends Controller
                 if (count($request->documents)) {
                     foreach ($request->documents as $document) {
                         if (is_array($document)) {
-                            $attachmentObj = createAttachment();
-                            $attachment_id = addMedia($attachmentObj, $document['file'])?->id;
-                            $attachmentObj?->delete();
+                            $attachment_id = null;
+                            if (!empty($document['file'])) {
+                                $attachmentObj = createAttachment();
+                                $attachment_id = addMedia($attachmentObj, $document['file'])?->id;
+                                $attachmentObj?->delete();
+                            }
                             $doc = Document::where('slug', $document['slug'])->first();
                             $expired_at = $document['expired_at'] ?? null;
                             if ($doc?->need_expired_date) {
@@ -713,10 +723,14 @@ class DriverAuthController extends Controller
         DB::beginTransaction();
         try {
 
+            $request = DriverDocumentUpload::prepare($request);
+
             $validator = Validator::make($request->all(), [
                 'documents' => 'required|array|min:1',
                 'documents.*.slug' => 'required|exists:documents,slug,deleted_at,NULL',
-                'documents.*.file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+                'documents.*.file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:300',
+            ], [
+                'documents.*.file.max' => 'Each document must be 300 KB or smaller.',
             ]);
 
             if ($validator->fails()) {

@@ -6,7 +6,7 @@ return array (
   'image' => 'modules/razorpay/images/logo.png',
   'title' => 'RazorPay',
   'processing_fee' => '1',
-  'subscription' => 0,
+  'subscription' => '1',
   'configs' => 
   array (
     'razorpay_key' => 'rzp_test_iV7SM01Wb7wvhv',

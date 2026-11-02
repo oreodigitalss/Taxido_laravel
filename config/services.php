@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'google_maps_browser' => ['api_key' => env('GOOGLE_MAP_BROWSER_KEY')],
 
     /*
     |--------------------------------------------------------------------------

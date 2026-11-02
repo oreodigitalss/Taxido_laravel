@@ -2,6 +2,7 @@
 namespace Modules\Taxido\Repositories\Api;
 
 use Exception;
+use Modules\Taxido\Services\DriverDocumentUpload;
 use Carbon\Carbon;
 use App\Services\SocketService;
 use App\Exceptions\ExceptionHandler;
@@ -417,6 +418,8 @@ class DriverRepository extends BaseRepository
                 throw new Exception('Only fleet manager can create a driver.', 403);
             }
 
+            $request = DriverDocumentUpload::prepare($request);
+
             $validator = Validator::make($request->all(), [
                 'name' => 'required',
                 'email' => 'required|string|email|max:255',
@@ -425,10 +428,14 @@ class DriverRepository extends BaseRepository
                 'country_code' => 'required',
                 'phone' => 'required|min:6|max:15',
                 'vehicle_info_id' => 'required|exists:vehicle_info,id,deleted_at,NULL',
-                'documents' => 'array|required',
+                'documents' => 'array|required|min:1',
                 'documents.*.slug' => 'exists:documents,slug,deleted_at,NULL|required',
+                'documents.*.file' => 'required|file|mimes:jpeg,png,jpg,pdf|max:300',
                 'service_id' => 'required|exists:services,id,deleted_at,NULL',
                 'service_category_id' => 'nullable|exists:service_categories,id,deleted_at,NULL',
+            ], [
+                'documents.*.file.required' => 'Every document file is required. Please select the missing file again.',
+                'documents.*.file.max' => 'Each document must be 300 KB or smaller.',
             ]);
 
             if ($validator->fails()) {
@@ -472,9 +479,12 @@ class DriverRepository extends BaseRepository
                 if (count($request->documents)) {
                     foreach ($request->documents as $document) {
                         if (is_array($document)) {
-                            $attachmentObj = createAttachment();
-                            $attachment_id = addMedia($attachmentObj, $document['file'])?->id;
-                            $attachmentObj?->delete();
+                            $attachment_id = null;
+                            if (!empty($document['file'])) {
+                                $attachmentObj = createAttachment();
+                                $attachment_id = addMedia($attachmentObj, $document['file'])?->id;
+                                $attachmentObj?->delete();
+                            }
                             $doc = Document::where('slug', $document['slug'])->first();
                             $expired_at = $document['expired_at'] ?? null;
                             if ($doc?->need_expired_date) {
@@ -515,6 +525,8 @@ class DriverRepository extends BaseRepository
                 throw new Exception('Only fleet manager can update a driver.', 403);
             }
 
+            $request = DriverDocumentUpload::prepare($request);
+
             $validator = Validator::make($request->all(), [
                 'driver_id' => 'required|exists:users,id,deleted_at,NULL',
                 'name' => 'sometimes|required|string',
@@ -523,9 +535,12 @@ class DriverRepository extends BaseRepository
                 'phone' => 'sometimes|required|min:6|max:15',
                 'vehicle_info_id' => 'sometimes|nullable|exists:vehicle_info,id,deleted_at,NULL',
                 'documents.*.slug' => 'sometimes|exists:documents,slug,deleted_at,NULL',
+                'documents.*.file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:300',
                 'service_id' => 'sometimes|exists:services,id,deleted_at,NULL',
                 'service_category_id' => 'sometimes|nullable|exists:service_categories,id,deleted_at,NULL',
                 'profile_image_id' => 'sometimes|nullable|exists:attachments,id,deleted_at,NULL',
+            ], [
+                'documents.*.file.max' => 'Each document must be 300 KB or smaller.',
             ]);
 
             if ($validator->fails()) {

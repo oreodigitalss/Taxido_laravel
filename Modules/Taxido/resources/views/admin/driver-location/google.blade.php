@@ -1,5 +1,5 @@
 @push('scripts')
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAP_API_KEY') }}&libraries=geometry"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ $settings['location']['google_map_api_key'] ?? env('GOOGLE_MAP_API_KEY') }}&libraries=geometry"></script>
 
     <script>
         (function($) {

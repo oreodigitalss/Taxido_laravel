@@ -38,7 +38,7 @@
                                     <ul class="payment-keys">
                                         @foreach ($paymentMethod['fields'] as $fieldKey => $field)
                                             @php
-                                                $fieldValue = env(strtoupper($fieldKey));
+                                                $fieldValue = $paymentMethod['slug'] === 'razorpay' ? ($paymentMethod['configs'][$fieldKey] ?? null) : env(strtoupper($fieldKey));
                                             @endphp
                                             @if ($field['type'] === 'password')
                                                 <li>
@@ -98,7 +98,7 @@
                             @method('POST')
                             @foreach ($paymentMethod['fields'] as $fieldKey => $field)
                                 @php
-                                    $fieldValue = env(strtoupper($fieldKey));
+                                    $fieldValue = $paymentMethod['slug'] === 'razorpay' ? ($paymentMethod['configs'][$fieldKey] ?? null) : env(strtoupper($fieldKey));
                                 @endphp
                                 <div class="form-group row">
                                     <label class="col-xxl-4" for="{{ $fieldKey }}">{{ $field['label'] }}</label>
